@@ -33,6 +33,17 @@ import {
 const ASSETS = [join(__dirname, '..', '..', 'seed-assets'), join(process.cwd(), 'seed-assets')].find((p) => existsSync(p))!;
 const uploads = new UploadsService();
 
+type SeedDb = ReturnType<typeof drizzle<typeof schema>>;
+type Tx = Parameters<Parameters<SeedDb['transaction']>[0]>[0];
+
+/** Fotos que este seed alcanzó a copiar: si algo falla se borran para no dejar basura. */
+const copied: string[] = [];
+async function importFile(...args: Parameters<UploadsService['importFile']>) {
+  const rel = await uploads.importFile(...args);
+  copied.push(rel);
+  return rel;
+}
+
 async function portrait(file: string, top = 0.3) {
   const img = sharp(await readFile(join(ASSETS, file))).rotate();
   const { width = 900, height = 1125 } = await img.metadata();
@@ -45,7 +56,7 @@ async function portrait(file: string, top = 0.3) {
   } else {
     buf = await img.resize(900, 1125, { fit: 'cover' }).webp({ quality: 84 }).toBuffer();
   }
-  return uploads.importFile('members', buf, '.webp');
+  return importFile('members', buf, '.webp');
 }
 
 async function wide(kind: 'projects' | 'gallery', file: string) {
@@ -54,13 +65,13 @@ async function wide(kind: 'projects' | 'gallery', file: string) {
     .resize({ width: 1800, withoutEnlargement: true })
     .webp({ quality: 82 })
     .toBuffer();
-  return uploads.importFile(kind, buf, '.webp');
+  return importFile(kind, buf, '.webp');
 }
 
 async function logo(file: string) {
   const path = join(ASSETS, 'logos', file);
   if (!existsSync(path)) return null;
-  return uploads.importFile('logos', await readFile(path), '.svg');
+  return importFile('logos', await readFile(path), '.svg');
 }
 
 export const SITE: SiteContent = {
@@ -141,7 +152,7 @@ const TECHS: [string, string, string | null][] = [
   ['Nominatim', 'Mapas', null],
 ];
 
-async function ensureAdmin(db: ReturnType<typeof drizzle<typeof schema>>) {
+async function ensureAdmin(db: SeedDb) {
   const email = process.env.ADMIN_EMAIL?.toLowerCase().trim();
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) {
@@ -176,12 +187,27 @@ async function main() {
     await pool.end();
     return;
   }
-  if (force) {
-    await db.execute(
-      sql`truncate table project_members, project_technologies, project_images, member_technologies, gallery_photos, projects, members, technologies, site_content restart identity cascade`,
-    );
-  }
 
+  // Todo o nada: si algo falla a mitad de camino la base queda como estaba y se puede volver a correr.
+  try {
+    await db.transaction(async (tx) => {
+      if (force) {
+        await tx.execute(
+          sql`truncate table project_members, project_technologies, project_images, member_technologies, gallery_photos, projects, members, technologies, site_content restart identity cascade`,
+        );
+      }
+      await loadContent(tx);
+    });
+  } catch (err) {
+    await Promise.all(copied.map((rel) => uploads.remove(rel)));
+    throw err;
+  } finally {
+    await pool.end();
+  }
+  console.log('· Contenido inicial cargado: 2 proyectos, 3 integrantes, 3 fotos de galería, %d tecnologías', TECHS.length);
+}
+
+async function loadContent(db: Tx) {
   await db.insert(siteContent).values({ key: 'site', value: SITE });
 
   // Tecnologías
@@ -420,9 +446,6 @@ async function main() {
     { projectId: ruta.id, memberId: jenny.id, role: 'Acompañamiento docente' },
     { projectId: ruta.id, memberId: neiber.id, role: null },
   ]);
-
-  console.log('· Contenido inicial cargado: 2 proyectos, 3 integrantes, 3 fotos de galería, %d tecnologías', TECHS.length);
-  await pool.end();
 }
 
 main().catch((err) => {

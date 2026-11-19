@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { UploadsService } from '../common/uploads.service';
 import { hashToken, optionalUrl } from '../common/util';
@@ -59,22 +59,35 @@ export class RegistroService {
     return member;
   }
 
+  /**
+   * Proyectos que la persona puede marcar: los publicados y los que el panel ya le asignó.
+   * Los borradores ajenos no se muestran (quien tiene el link no debe ver ni unirse a proyectos sin publicar).
+   */
+  private selectableProjects(memberId: number) {
+    const assigned = this.db.select({ id: projectMembers.projectId }).from(projectMembers).where(eq(projectMembers.memberId, memberId));
+    return this.db
+      .select({ id: projects.id, name: projects.name, status: projects.status })
+      .from(projects)
+      .where(or(eq(projects.published, true), inArray(projects.id, assigned)))
+      .orderBy(asc(projects.sortOrder), asc(projects.name));
+  }
+
   async load(token: string) {
     const member = await this.byToken(token);
     const [view] = await this.views.members([member], false);
-    const projectList = await this.db
-      .select({ id: projects.id, name: projects.name, status: projects.status })
-      .from(projects)
-      .orderBy(asc(projects.sortOrder), asc(projects.name));
     return {
       member: { ...view, status: member.status, consent: !!member.consentAt, submittedAt: member.submittedAt },
-      projects: projectList,
+      projects: await this.selectableProjects(member.id),
       technologies: await this.views.technologies(),
     };
   }
 
   async save(token: string, input: RegistroInput) {
     const member = await this.byToken(token, true);
+    const allowed = new Set((await this.selectableProjects(member.id)).map((p) => p.id));
+    if (input.projects.some((p) => !allowed.has(p.projectId))) {
+      throw new BadRequestException('Uno de los proyectos ya no está disponible. Recarga la página.');
+    }
     await this.db.transaction(async (tx) => {
       await tx
         .update(members)

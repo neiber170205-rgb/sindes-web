@@ -25,7 +25,11 @@ async function main() {
       const rows = await db.select({ email: adminUsers.email, name: adminUsers.name, role: adminUsers.role }).from(adminUsers);
       console.table(rows);
     } else if (cmd === 'crear' && email && name) {
-      const password = process.env.ADMIN_PASSWORD || newPassword();
+      if (role && role !== 'admin' && role !== 'editor') throw new Error(`Rol desconocido «${role}»: usa admin o editor`);
+      const [exists] = await db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.email, email));
+      if (exists) throw new Error(`Ya existe la cuenta ${email}. Para darle otra contraseña: clave ${email}`);
+      // Siempre una contraseña nueva: ADMIN_PASSWORD del .env es la de la cuenta principal y no debe repetirse.
+      const password = newPassword();
       await db.insert(adminUsers).values({ email, name, role: role === 'editor' ? 'editor' : 'admin', passwordHash: await bcrypt.hash(password, 12) });
       console.log(`Cuenta creada: ${email}\nContraseña: ${password}\nCámbiala al entrar (Panel → Mi cuenta).`);
     } else if (cmd === 'clave' && email) {

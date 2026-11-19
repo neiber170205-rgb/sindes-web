@@ -7,6 +7,7 @@ import ProjectPage from '@/pages/site/ProjectPage';
 import { NotFound } from '@/pages/site/States';
 
 const Registro = lazy(() => import('@/pages/registro/RegistroPage'));
+const RegistroAbierto = lazy(() => import('@/pages/registro/OpenRegistroPage'));
 const AdminApp = lazy(() => import('@/pages/admin/AdminApp'));
 
 function Loading() {
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="integrantes/:slug" element={<MemberPage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
+          <Route path="registro/abierto/:token" element={<RegistroAbierto />} />
           <Route path="registro/:token" element={<Registro />} />
           <Route path="admin/*" element={<AdminApp />} />
         </Routes>

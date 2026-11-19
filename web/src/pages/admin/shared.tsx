@@ -18,6 +18,11 @@ export function whatsappText(name: string, link: string) {
   return `Hola ${first}, este es tu link para armar tu perfil en la página de SINDES: ${link}\nLlénalo con tus datos y tu foto, y al final dale «Enviar a revisión». El link es solo tuyo.`;
 }
 
+/** Mensaje para el grupo con el link general. */
+export function groupText(link: string) {
+  return `¡Hola, equipo! Estamos armando la página de SINDES. Entren a este link, escriban su nombre y su correo @fesc.edu.co, llenen su perfil y suban su foto: ${link}\nAl final denle «Enviar a revisión». Guarden el link personal que les queda para volver después.`;
+}
+
 /** Genera un link personal nuevo para alguien y lo muestra para copiar. */
 export function InviteButton({ member, onDone, variant = 'outline', size = 'sm' }: { member: { id: number; fullName: string }; onDone?: () => void; variant?: 'outline' | 'default' | 'ghost'; size?: 'sm' | 'default' }) {
   const [link, setLink] = useState<string | null>(null);

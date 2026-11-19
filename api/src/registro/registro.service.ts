@@ -1,11 +1,28 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { asc, eq, inArray, or } from 'drizzle-orm';
+import { asc, eq, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { uniqueMemberSlug } from '../common/member-slug';
 import { UploadsService } from '../common/uploads.service';
-import { hashToken, optionalUrl } from '../common/util';
+import { hashToken, newToken, optionalUrl } from '../common/util';
 import { ViewsService } from '../common/views.service';
 import { Db, InjectDb } from '../db/db.module';
 import { memberTechnologies, members, projectMembers, projects } from '../db/schema';
+import { OpenLinkService } from './open-link.service';
+
+/** Días que dura el link personal que recibe quien entra por el link general. */
+const PERSONAL_LINK_DAYS = 21;
+
+const fescEmail = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[^\s@]+@fesc\.edu\.co$/, 'Usa tu correo institucional @fesc.edu.co');
+
+const fullName = z.string().trim().min(5, 'Escribe tu nombre completo').max(120);
+
+/** Primer paso desde el link general: lo mínimo para crear el perfil. */
+export const openStartSchema = z.object({ fullName, email: fescEmail });
+export type OpenStartInput = z.infer<typeof openStartSchema>;
 
 const url = (host?: RegExp) =>
   z.preprocess(
@@ -19,19 +36,13 @@ const url = (host?: RegExp) =>
   );
 
 export const registroSchema = z.object({
-  fullName: z.string().trim().min(5, 'Escribe tu nombre completo').max(120),
+  fullName,
   roleTitle: z.string().trim().max(60).optional(),
   semester: z.coerce.number().int().min(1).max(12).nullable().optional(),
   joinedOn: z.string().trim().max(40).nullable().optional(),
   bio: z.string().trim().max(600, 'La presentación es muy larga (máximo 600 caracteres)').nullable().optional(),
   interests: z.string().trim().max(300).nullable().optional(),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[^\s@]+@fesc\.edu\.co$/, 'Usa tu correo institucional @fesc.edu.co')
-    .nullable()
-    .optional(),
+  email: fescEmail.nullable().optional(),
   githubUrl: url(/(^|\.)github\.com$/),
   linkedinUrl: url(/(^|\.)linkedin\.com$/),
   technologyIds: z.array(z.number().int()).max(30).default([]),
@@ -44,7 +55,40 @@ export type RegistroInput = z.infer<typeof registroSchema>;
 
 @Injectable()
 export class RegistroService {
-  constructor(@InjectDb() private readonly db: Db, private readonly views: ViewsService, private readonly uploads: UploadsService) {}
+  constructor(
+    @InjectDb() private readonly db: Db,
+    private readonly views: ViewsService,
+    private readonly uploads: UploadsService,
+    private readonly openLink: OpenLinkService,
+  ) {}
+
+  // ---- Link general ----
+
+  /** Para que la página muestre de una vez si el link sirve o venció. */
+  openCheck(token: string) {
+    return this.openLink.assertValid(token);
+  }
+
+  /** Crea el perfil en borrador de quien entró por el link general y le da su link personal para seguir. */
+  async openStart(openToken: string, input: OpenStartInput) {
+    await this.openLink.assertValid(openToken);
+    const [taken] = await this.db.select({ id: members.id }).from(members).where(sql`lower(${members.email}) = ${input.email}`);
+    if (taken) {
+      throw new BadRequestException('Ya hay un perfil con ese correo. Si es el tuyo, pide tu link personal a quien administra la página.');
+    }
+    const { token, hash } = newToken();
+    await this.db.insert(members).values({
+      fullName: input.fullName,
+      slug: await uniqueMemberSlug(this.db, input.fullName),
+      email: input.email,
+      status: 'draft',
+      inviteTokenHash: hash,
+      inviteExpiresAt: new Date(Date.now() + PERSONAL_LINK_DAYS * 86_400_000),
+    });
+    return { token };
+  }
+
+  // ---- Link personal ----
 
   private async byToken(token: string, forWrite = false) {
     if (!token || token.length < 20) throw new NotFoundException('Este link no existe');

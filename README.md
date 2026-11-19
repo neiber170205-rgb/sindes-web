@@ -57,7 +57,8 @@ sindes-web/
 
 ## Primer uso del panel
 
-- **Invitar**: pega los nombres (uno por línea) → copia cada link o el mensaje para WhatsApp.
+- **Invitar a todo el grupo**: en *Invitar → Link general* crea un solo link y compártelo en el grupo. Cada persona escribe su nombre y su correo @fesc.edu.co y sigue en su propio link personal. Puedes cambiarlo o desactivarlo cuando quieras.
+- **Invitar a alguien en particular**: pega los nombres (uno por línea) → copia cada link o el mensaje para WhatsApp.
 - **Revisar**: en *Integrantes → Por revisar* abre cada perfil, corrige si hace falta y dale *Publicar*.
 - **Link perdido o vencido**: en el perfil, *Link nuevo* (el anterior deja de servir).
 - **Docente directora**: en su perfil, activa *Destacar arriba*.

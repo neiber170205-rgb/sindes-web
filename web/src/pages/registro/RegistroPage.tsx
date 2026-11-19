@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Check, Loader2, Send } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { CountedTextarea, Field, formatJoined, MONTHS, parseJoined, RowsEditor, TechPicker } from '@/components/forms';
 import { PhotoPicker } from '@/components/PhotoCropper';
@@ -14,6 +14,7 @@ import { api, ApiError, errorText } from '@/lib/api';
 import { useDocumentTitle } from '@/lib/hooks';
 import type { Achievement, Education, Member, MemberStatus, Tech } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { Shell } from './Shell';
 
 type Load = {
   member: Member & { status: MemberStatus; consent: boolean; submittedAt: string | null };
@@ -81,25 +82,31 @@ function toPayload(f: Form) {
   };
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+/** Aviso para quien acaba de llegar desde el link general: su link personal es la dirección actual. */
+function SaveLinkNote() {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copiado');
+    } catch {
+      toast.error('No se pudo copiar: copia la dirección de arriba');
+    }
+  };
   return (
-    <div className="min-h-screen bg-hielo">
-      <header className="bg-azul px-5 py-3">
-        <div className="mx-auto flex max-w-3xl items-center gap-4">
-          <img src="/img/logo-fesc.webp" alt="FESC" className="h-9 w-auto" />
-          <span aria-hidden="true" className="h-7 w-px bg-white/55" />
-          <img src="/img/logo-ingenieria-software.svg" alt="Ingeniería de Software" className="h-10 w-auto" />
-          <span aria-hidden="true" className="h-7 w-px bg-white/55" />
-          <img src="/img/logo-sindes.png" alt="SINDES" className="h-11 w-auto" />
-        </div>
-      </header>
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">{children}</main>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-black bg-white px-4 py-3">
+      <p className="text-sm font-medium">
+        Este es <b>tu link personal</b>. Guárdalo en favoritos o cópialo: con él vuelves a tu perfil cuando quieras.
+      </p>
+      <Button size="sm" variant="outline" onClick={copy}>
+        Copiar mi link
+      </Button>
     </div>
   );
 }
 
 export default function RegistroPage() {
   const { token = '' } = useParams();
+  const fromOpenLink = (useLocation().state as { nuevo?: boolean } | null)?.nuevo === true;
   const qc = useQueryClient();
   useDocumentTitle('Tu perfil en SINDES');
   const q = useQuery({ queryKey: ['registro', token], queryFn: () => api.get<Load>(`/registro/${token}`), retry: false });
@@ -243,6 +250,8 @@ export default function RegistroPage() {
           <h1 className="text-[clamp(30px,5vw,46px)] leading-[1.02] font-black tracking-[-0.015em] italic">Arma tu perfil en SINDES.</h1>
           <p className="max-w-xl text-[17px] text-gris">Lo que escribas aquí sale en la página del semillero. Se guarda cada vez que pasas de paso y puedes volver a este link cuando quieras.</p>
         </div>
+
+        {fromOpenLink && <SaveLinkNote />}
 
         {m.status === 'pending' && (
           <p className="rounded-xl border-2 border-black bg-[#FFF1D6] px-4 py-3 text-sm font-medium">Ya enviaste tu perfil y está en revisión. Si cambias algo, vuelve a enviarlo al final.</p>

@@ -16,11 +16,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { asc, count, desc, eq, inArray, like } from 'drizzle-orm';
+import { asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { AuthGuard } from '../auth/auth.guard';
+import { uniqueMemberSlug } from '../common/member-slug';
 import { MAX_UPLOAD_BYTES, UploadsService } from '../common/uploads.service';
-import { newToken, optionalUrl, siteUrl, slugify } from '../common/util';
+import { newToken, optionalUrl, siteUrl } from '../common/util';
 import { ViewsService } from '../common/views.service';
 import { ZodPipe } from '../common/zod.pipe';
 import { Db, InjectDb } from '../db/db.module';
@@ -64,14 +65,8 @@ const reorderSchema = z.object({ ids: z.array(z.number().int()).min(1) });
 export class MembersController {
   constructor(@InjectDb() private readonly db: Db, private readonly views: ViewsService, private readonly uploads: UploadsService) {}
 
-  private async uniqueSlug(base: string, exceptId?: number) {
-    const root = slugify(base);
-    const taken = await this.db.select({ id: members.id, slug: members.slug }).from(members).where(like(members.slug, `${root}%`));
-    const used = new Set(taken.filter((t) => t.id !== exceptId).map((t) => t.slug));
-    if (!used.has(root)) return root;
-    let n = 2;
-    while (used.has(`${root}-${n}`)) n++;
-    return `${root}-${n}`;
+  private uniqueSlug(base: string, exceptId?: number) {
+    return uniqueMemberSlug(this.db, base, exceptId);
   }
 
   private inviteLink(token: string) {

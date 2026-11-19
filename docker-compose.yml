@@ -1,0 +1,61 @@
+# SINDES en un solo servidor (Vultr): base de datos, API y Caddy con HTTPS.
+# Uso: cp .env.example .env  →  llenar  →  docker compose up -d --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sindes
+      POSTGRES_USER: sindes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sindes -d sindes']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://sindes:${POSTGRES_PASSWORD}@db:5432/sindes
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env}
+      PUBLIC_SITE_URL: https://${DOMAIN:?Falta DOMAIN en .env}
+      UPLOAD_DIR: /data/uploads
+      SERVE_UPLOADS: 'false'
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Administración SINDES}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - uploads:/data/uploads
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Falta ACME_EMAIL en .env}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - uploads:/data/uploads:ro
+      - caddy_data:/data/caddy
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

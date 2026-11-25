@@ -80,7 +80,7 @@ export class UploadsService {
 
   /** Ruta nueva y vacía dentro de /uploads para que otro proceso (ffmpeg) escriba ahí. */
   async reserve(kind: UploadKind, ext: string) {
-    const rel = `${kind}/${Date.now().toString(36)}-${randomBytes(5).toString('hex')}${ext}`;
+    const rel = `${kind}/${randomBytes(16).toString('base64url')}${ext}`;
     const abs = join(this.root, rel);
     await mkdir(dirname(abs), { recursive: true });
     return { rel, abs };

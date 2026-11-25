@@ -14,6 +14,13 @@ async function bootstrap() {
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
   app.use(cookieParser());
   app.useBodyParser('json', { limit: '1mb' });
+  // Las respuestas del API no se guardan en caché ni se indexan: algunas traen datos de un perfil (links personales, panel).
+  // Las rutas públicas ponen su propio Cache-Control.
+  app.use('/api', (_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    next();
+  });
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
 

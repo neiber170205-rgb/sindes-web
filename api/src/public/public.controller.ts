@@ -27,6 +27,7 @@ export class PublicController {
   }
 
   @Get('projects/:slug')
+  @Header('Cache-Control', 'public, max-age=30')
   async project(@Param('slug') slug: string) {
     const rows = await this.db.select().from(projects).where(and(eq(projects.slug, slug), eq(projects.published, true)));
     if (!rows.length) throw new NotFoundException('Proyecto no encontrado');
@@ -35,6 +36,7 @@ export class PublicController {
   }
 
   @Get('members/:slug')
+  @Header('Cache-Control', 'public, max-age=30')
   async member(@Param('slug') slug: string) {
     const rows = await this.db.select().from(members).where(and(eq(members.slug, slug), eq(members.status, 'published')));
     if (!rows.length) throw new NotFoundException('Integrante no encontrado');

@@ -66,6 +66,7 @@ sindes-web/
 - **Dar acceso al panel** (docentes o estudiantes): *Cuentas y acceso → Dar acceso a alguien* → mándale el link; ahí elige su contraseña.
   - *Edición*: maneja integrantes, proyectos, textos y fotos; no elimina ni crea cuentas.
   - *Administración*: todo.
+- **Video del proyecto** (tipo reel): *Proyectos → Editar → Video → Subir video*. MP4 o MOV, hasta 2 GB y 30 min. El servidor lo deja en MP4 liviano (un reel de 5 min queda en ~30 MB) y aparece solo en la página; en un VPS de 1 vCPU tarda unos 5 min.
 - **Descargar fotos**: *Integrantes → Descargar fotos* baja las de la pestaña abierta en un .zip (JPG, con el nombre de cada persona). Una sola: menú ⋯ del integrante o *Descargar* en su perfil.
 - **Olvidó la contraseña**: *Cuentas y acceso → Link de acceso* (vale 7 días, un solo uso).
 

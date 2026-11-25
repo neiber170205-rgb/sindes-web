@@ -14,6 +14,7 @@ export const memberStatus = pgEnum('member_status', ['draft', 'pending', 'publis
 export const memberKind = pgEnum('member_kind', ['docente', 'estudiante']);
 export const projectStatus = pgEnum('project_status', ['en_desarrollo', 'prototipo', 'finalizado']);
 export const adminRole = pgEnum('admin_role', ['admin', 'editor']);
+export const videoStatus = pgEnum('video_status', ['processing', 'ready', 'error']);
 
 export type Achievement = { title: string; detail?: string; date?: string };
 export type Education = { title: string; institution?: string; period?: string };
@@ -124,6 +125,29 @@ export const projectImages = pgTable('project_images', {
   caption: text('caption'),
   alt: text('alt'),
   sortOrder: integer('sort_order').notNull().default(100),
+});
+
+/**
+ * Video tipo reel de cada proyecto. Se sube el archivo original, se convierte en segundo plano
+ * a MP4 H.264 (máximo 1280 px por lado) y queda listo para verse en la página.
+ * Mientras el nuevo se procesa, el anterior sigue visible.
+ */
+export const projectVideos = pgTable('project_videos', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  status: videoStatus('status').notNull().default('processing'),
+  /** Archivo original mientras se procesa (fuera de /uploads, no es público) */
+  sourcePath: text('source_path'),
+  originalName: text('original_name'),
+  path: text('path'),
+  posterPath: text('poster_path'),
+  durationSec: integer('duration_sec'),
+  width: integer('width'),
+  height: integer('height'),
+  sizeBytes: integer('size_bytes'),
+  caption: text('caption'),
+  error: text('error'),
+  ...timestamps,
 });
 
 export const projectMembers = pgTable(

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { Db, InjectDb } from '../db/db.module';
 import {
   galleryPhotos,
@@ -12,8 +12,10 @@ import {
   siteContent,
   SiteContent,
   technologies,
+  projectVideos,
 } from '../db/schema';
 import { publicUrl } from './util';
+import { VideoService } from './video.service';
 
 export const STATUS_LABEL: Record<string, string> = {
   en_desarrollo: 'En desarrollo',
@@ -35,7 +37,7 @@ export const techView = (t: TechRow, category?: string | null) => ({
 
 @Injectable()
 export class ViewsService {
-  constructor(@InjectDb() private readonly db: Db) {}
+  constructor(@InjectDb() private readonly db: Db, private readonly videos: VideoService) {}
 
   async content(): Promise<SiteContent> {
     const [row] = await this.db.select().from(siteContent).where(eq(siteContent.key, 'site'));
@@ -136,6 +138,19 @@ export class ViewsService {
           : inArray(projectMembers.projectId, ids),
       )
       .orderBy(asc(members.sortOrder), asc(members.id));
+    const videoRows = await this.db.select().from(projectVideos).where(inArray(projectVideos.projectId, ids)).orderBy(desc(projectVideos.id));
+    const videoOf = (projectId: number) => {
+      const v = videoRows.find((r) => r.projectId === projectId && r.status === 'ready');
+      return v?.path
+        ? { id: v.id, url: publicUrl(v.path)!, posterUrl: publicUrl(v.posterPath), durationSec: v.durationSec ?? 0, width: v.width ?? 720, height: v.height ?? 1280, caption: v.caption }
+        : null;
+    };
+    // Para el panel: el último video que todavía no está listo (procesando o con error)
+    const jobOf = (projectId: number) => {
+      const v = videoRows.find((r) => r.projectId === projectId);
+      if (!v || v.status === 'ready') return null;
+      return { id: v.id, status: v.status, error: v.error, originalName: v.originalName, ...this.videos.state(v.id) };
+    };
     return rows.map((p) => ({
       id: p.id,
       slug: p.slug,
@@ -161,6 +176,8 @@ export class ViewsService {
       documents: p.documents,
       extraTitle: p.extraTitle,
       extraBody: p.extraBody,
+      video: videoOf(p.id),
+      ...(onlyPublishedMembers ? {} : { videoJob: jobOf(p.id) }),
       images: images
         .filter((i) => i.projectId === p.id)
         .map((i) => ({ id: i.id, url: publicUrl(i.path)!, caption: i.caption, alt: i.alt, sortOrder: i.sortOrder })),

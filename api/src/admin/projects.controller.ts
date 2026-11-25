@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,17 +16,40 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { and, asc, eq, like } from 'drizzle-orm';
+import { mkdirSync } from 'node:fs';
+import { unlink } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { extname } from 'node:path';
+import { diskStorage } from 'multer';
+import { and, asc, eq, like, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import { AdminOnly, AuthGuard } from '../auth/auth.guard';
 import { MAX_UPLOAD_BYTES, UploadsService } from '../common/uploads.service';
 import { optionalUrl, slugify } from '../common/util';
+import { FriendlyError, MAX_VIDEO_BYTES, VIDEO_TMP_DIR, VideoService } from '../common/video.service';
 import { ViewsService } from '../common/views.service';
 import { ZodPipe } from '../common/zod.pipe';
 import { Db, InjectDb } from '../db/db.module';
-import { projectImages, projectMembers, projectTechnologies, projects } from '../db/schema';
+import { projectImages, projectMembers, projectTechnologies, projects, projectVideos } from '../db/schema';
 
 const s = (max: number) => z.string().trim().max(max);
+
+/** El original del video se guarda en disco (no en memoria) mientras llega. */
+const videoUpload = FileInterceptor('file', {
+  storage: diskStorage({
+    destination: (_req, _file, cb) => {
+      mkdirSync(VIDEO_TMP_DIR, { recursive: true });
+      cb(null, VIDEO_TMP_DIR);
+    },
+    filename: (_req, file, cb) => {
+      const ext = extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '').slice(0, 6) || '.mp4';
+      cb(null, `${Date.now().toString(36)}-${randomBytes(6).toString('hex')}${ext}`);
+    },
+  }),
+  limits: { fileSize: MAX_VIDEO_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) =>
+    file.mimetype.startsWith('video/') ? cb(null, true) : cb(new BadRequestException('Sube un archivo de video (MP4, MOV o WebM)'), false),
+});
 
 const projectSchema = z.object({
   name: s(80).min(2),
@@ -61,7 +85,12 @@ const imageSchema = z.object({ caption: s(160).nullable().optional(), alt: s(200
 @Controller('admin/projects')
 @UseGuards(AuthGuard)
 export class ProjectsController {
-  constructor(@InjectDb() private readonly db: Db, private readonly views: ViewsService, private readonly uploads: UploadsService) {}
+  constructor(
+    @InjectDb() private readonly db: Db,
+    private readonly views: ViewsService,
+    private readonly uploads: UploadsService,
+    private readonly videos: VideoService,
+  ) {}
 
   private async uniqueSlug(base: string, exceptId?: number) {
     const root = slugify(base);
@@ -145,8 +174,11 @@ export class ProjectsController {
   @HttpCode(204)
   async remove(@Param('id', ParseIntPipe) id: number) {
     const imgs = await this.db.select({ path: projectImages.path }).from(projectImages).where(eq(projectImages.projectId, id));
+    this.videos.cancelProject(id);
+    const vids = await this.db.select().from(projectVideos).where(eq(projectVideos.projectId, id));
     await this.db.delete(projects).where(eq(projects.id, id));
     for (const i of imgs) await this.uploads.remove(i.path);
+    for (const v of vids) await this.videos.removeFiles(v);
   }
 
   // ---- Capturas ----
@@ -194,6 +226,51 @@ export class ProjectsController {
       .where(and(eq(projectImages.id, imageId), eq(projectImages.projectId, id)))
       .returning({ path: projectImages.path });
     await this.uploads.remove(img?.path);
+    return this.one(id);
+  }
+
+  // ---- Video tipo reel ----
+
+  /** Sube un video; se procesa en segundo plano y reemplaza al anterior cuando queda listo. */
+  @Post(':id/video')
+  @UseInterceptors(videoUpload)
+  async addVideo(@Param('id', ParseIntPipe) id: number, @UploadedFile() file: Express.Multer.File | undefined, @Body() body: Record<string, string>) {
+    if (!file) throw new BadRequestException('Falta el video');
+    try {
+      const [p] = await this.db.select({ id: projects.id }).from(projects).where(eq(projects.id, id));
+      if (!p) throw new NotFoundException();
+      await this.videos.assertSpace(file.size);
+    } catch (e) {
+      await unlink(file.path).catch(() => undefined);
+      if (e instanceof FriendlyError) throw new BadRequestException(e.message);
+      throw e;
+    }
+    // Si había otro subiéndose o procesándose para este proyecto, se descarta
+    this.videos.cancelProject(id);
+    const pending = await this.db
+      .delete(projectVideos)
+      .where(and(eq(projectVideos.projectId, id), ne(projectVideos.status, 'ready')))
+      .returning();
+    for (const v of pending) await this.videos.removeFiles(v);
+    const [row] = await this.db
+      .insert(projectVideos)
+      .values({ projectId: id, status: 'processing', sourcePath: file.path, originalName: file.originalname.slice(0, 200), caption: body.caption?.slice(0, 160) || null })
+      .returning({ id: projectVideos.id });
+    this.videos.enqueue({ id: row.id, projectId: id });
+    return this.one(id);
+  }
+
+  @Patch(':id/video')
+  async editVideo(@Param('id', ParseIntPipe) id: number, @Body(new ZodPipe(z.object({ caption: s(160).nullable().optional() }))) body: { caption?: string | null }) {
+    await this.db.update(projectVideos).set({ caption: body.caption || null, updatedAt: new Date() }).where(eq(projectVideos.projectId, id));
+    return this.one(id);
+  }
+
+  @Delete(':id/video')
+  async removeVideo(@Param('id', ParseIntPipe) id: number) {
+    this.videos.cancelProject(id);
+    const rows = await this.db.delete(projectVideos).where(eq(projectVideos.projectId, id)).returning();
+    for (const v of rows) await this.videos.removeFiles(v);
     return this.one(id);
   }
 }

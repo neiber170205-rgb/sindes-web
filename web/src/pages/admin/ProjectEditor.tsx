@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api, errorText } from '@/lib/api';
 import type { Fact, Feature, Img, Layer, Milestone, Project, ProjectStatus, Stat } from '@/lib/types';
+import { ProjectVideoPanel } from './ProjectVideo';
 import { useAdminMembers, useTechnologies } from './shared';
 import { Confirm, PageHeader, Panel, Spinner, StatusBadge, useAction } from './ui';
 
@@ -205,7 +206,13 @@ export default function ProjectEditor() {
   const isNew = !id;
   const nav = useNavigate();
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['admin', 'project', id], queryFn: () => api.get<Project>(`/admin/projects/${id}`), enabled: !isNew });
+  const q = useQuery({
+    queryKey: ['admin', 'project', id],
+    queryFn: () => api.get<Project>(`/admin/projects/${id}`),
+    enabled: !isNew,
+    // Mientras el video se procesa, se pregunta el avance cada 2,5 s
+    refetchInterval: (query) => (query.state.data?.videoJob?.status === 'processing' ? 2500 : false),
+  });
   const { data: members } = useAdminMembers();
   const { data: techs } = useTechnologies();
   const [form, setForm] = useState<Form | null>(isNew ? EMPTY : null);
@@ -283,6 +290,9 @@ export default function ProjectEditor() {
           <TabsTrigger value="equipo">Equipo y tecnologías</TabsTrigger>
           <TabsTrigger value="capturas" disabled={isNew}>
             Capturas {p ? <span className="text-xs opacity-70">{p.images.length}</span> : null}
+          </TabsTrigger>
+          <TabsTrigger value="video" disabled={isNew}>
+            Video {p?.videoJob?.status === 'processing' ? <Loader2 className="size-3.5 animate-spin" /> : p?.video ? <span className="size-2 rounded-full bg-[#16a34a]" aria-label="tiene video" /> : null}
           </TabsTrigger>
         </TabsList>
 
@@ -461,6 +471,18 @@ export default function ProjectEditor() {
               </div>
             )}
           </Panel>
+        </TabsContent>
+
+        <TabsContent value="video">
+          {p && (
+            <ProjectVideoPanel
+              project={p}
+              onChange={(np) => {
+                qc.setQueryData(['admin', 'project', id], np);
+                qc.invalidateQueries({ queryKey: ['admin', 'projects'] });
+              }}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="capturas">{p && <Images project={p} onChange={(np) => (qc.setQueryData(['admin', 'project', id], np), qc.invalidateQueries({ queryKey: ['admin', 'projects'] }))} />}</TabsContent>

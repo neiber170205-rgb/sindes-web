@@ -14,9 +14,14 @@
 		-Server
 	}
 
-	# API
+	# API: 10 MB para todo, salvo la subida de videos de proyectos (hasta 2 GB)
 	handle /api/* {
-		request_body {
+		@video path_regexp ^/api/admin/projects/[0-9]+/video$
+		@normal not path_regexp ^/api/admin/projects/[0-9]+/video$
+		request_body @video {
+			max_size 2GB
+		}
+		request_body @normal {
 			max_size 10MB
 		}
 		reverse_proxy api:3000

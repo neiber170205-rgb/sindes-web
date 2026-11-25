@@ -4,7 +4,7 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import sharp from 'sharp';
 
-export type UploadKind = 'members' | 'projects' | 'gallery' | 'logos';
+export type UploadKind = 'members' | 'projects' | 'gallery' | 'logos' | 'videos';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -76,6 +76,14 @@ export class UploadsService {
     const abs = normalize(join(this.root, rel));
     if (!abs.startsWith(normalize(this.root))) return;
     await unlink(abs).catch(() => undefined);
+  }
+
+  /** Ruta nueva y vacía dentro de /uploads para que otro proceso (ffmpeg) escriba ahí. */
+  async reserve(kind: UploadKind, ext: string) {
+    const rel = `${kind}/${randomBytes(16).toString('base64url')}${ext}`;
+    const abs = join(this.root, rel);
+    await mkdir(dirname(abs), { recursive: true });
+    return { rel, abs };
   }
 
   async importFile(kind: UploadKind, buffer: Buffer, ext: string): Promise<string> {

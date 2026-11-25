@@ -97,6 +97,17 @@ function Row({ p, open, onToggle, delay }: { p: Project; open: boolean; onToggle
                 >
                   Ver proyecto completo
                 </Link>
+                {p.video && (
+                  <Link
+                    to={`/proyectos/${p.slug}#video`}
+                    className="bt btr inline-flex min-h-[50px] items-center gap-2 rounded-full bg-rojo px-6 text-base font-bold text-white no-underline hover:text-white"
+                  >
+                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M7 4.5v15l13-7.5z" />
+                    </svg>
+                    Ver video
+                  </Link>
+                )}
                 {p.demoUrl && (
                   <a
                     href={p.demoUrl}

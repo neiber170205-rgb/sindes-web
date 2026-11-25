@@ -24,6 +24,10 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port, '0.0.0.0');
+  // Un video de varios minutos puede tardar en subir: se da hasta 3 h por petición (Node corta a los 5 min por defecto).
+  const server = app.getHttpServer();
+  server.requestTimeout = 3 * 60 * 60 * 1000;
+  server.headersTimeout = 2 * 60 * 1000;
   Logger.log(`API lista en http://localhost:${port}/api`, 'SINDES');
 }
 bootstrap();

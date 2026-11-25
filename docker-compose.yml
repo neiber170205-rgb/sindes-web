@@ -30,12 +30,15 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env}
       PUBLIC_SITE_URL: https://${DOMAIN:?Falta DOMAIN en .env}
       UPLOAD_DIR: /data/uploads
+      VIDEO_TMP_DIR: /data/incoming
+      MAX_VIDEO_MB: ${MAX_VIDEO_MB:-2048}
       SERVE_UPLOADS: 'false'
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_NAME: ${ADMIN_NAME:-Administración SINDES}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - uploads:/data/uploads
+      - incoming:/data/incoming
 
   web:
     build: ./web
@@ -57,5 +60,6 @@ services:
 volumes:
   pgdata:
   uploads:
+  incoming:
   caddy_data:
   caddy_config:

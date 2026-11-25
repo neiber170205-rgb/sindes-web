@@ -5,7 +5,7 @@ import { colorFor, TechTiles } from '@/components/site/bits';
 import { ApiError } from '@/lib/api';
 import { useDocumentTitle, useProject } from '@/lib/hooks';
 import type { Project } from '@/lib/types';
-import { groupBy, initials, shortName } from '@/lib/utils';
+import { formatDuration, groupBy, initials, shortName } from '@/lib/utils';
 import { NotFound, PageError, PageLoading } from './States';
 
 const STAT_STYLE = [
@@ -44,6 +44,38 @@ function Gallery({ p }: { p: Project }) {
             ))}
           </div>
         )}
+      </div>
+    </section>
+  );
+}
+
+function VideoBand({ p }: { p: Project }) {
+  const v = p.video;
+  if (!v) return null;
+  const vertical = v.height >= v.width;
+  const mins = Math.max(1, Math.round(v.durationSec / 60));
+  return (
+    <section id="video" className="px-6 pt-12">
+      <div className={`mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-12 gap-y-7 rounded-[28px] bg-black p-[clamp(18px,3vw,40px)] text-white ${vertical ? '' : 'flex-col items-stretch'}`}>
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          poster={v.posterUrl ?? undefined}
+          className={`block rounded-[18px] bg-[#111] ${vertical ? 'mx-auto w-full max-w-[380px] flex-[0_1_380px]' : 'w-full'}`}
+          style={{ aspectRatio: `${v.width} / ${v.height}` }}
+          aria-label={`Video de ${p.name}`}
+        >
+          <source src={v.url} type="video/mp4" />
+          Tu navegador no puede reproducir este video.
+        </video>
+        <div className="flex min-w-[260px] flex-1 flex-col gap-4">
+          <span className="self-start rounded-full bg-rojo px-3.5 py-1.5 text-sm font-bold">
+            Video · {formatDuration(v.durationSec)} min
+          </span>
+          <h2 className="text-[clamp(30px,3.6vw,52px)] leading-[1.02] font-black italic">{p.name} en {mins} {mins === 1 ? 'minuto' : 'minutos'}.</h2>
+          {v.caption && <p className="max-w-[34em] text-lg leading-[1.55] text-[#D6D6DB]">{v.caption}</p>}
+        </div>
       </div>
     </section>
   );
@@ -96,8 +128,19 @@ export default function ProjectPage() {
           {p.subtitle && <p className="text-[clamp(19px,2vw,24px)] font-semibold text-cielo">{p.subtitle}</p>}
           {p.intro && <p className="max-w-[720px] text-lg leading-[1.6] text-[#D6D6DB]">{p.intro}</p>}
           <div className="flex flex-wrap gap-3">
+            {p.video && (
+              <a href="#video" className="bt btb inline-flex min-h-[50px] items-center gap-2 rounded-full bg-rojo px-6 text-base font-bold text-white no-underline hover:text-white">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 4.5v15l13-7.5z" />
+                </svg>
+                Ver video
+              </a>
+            )}
             {p.images.length > 0 && (
-              <a href="#galeria" className="bt btb inline-flex min-h-[50px] items-center rounded-full bg-rojo px-6 text-base font-bold text-white no-underline hover:text-white">
+              <a
+                href="#galeria"
+                className={`bt btb inline-flex min-h-[50px] items-center rounded-full px-6 text-base font-bold text-white no-underline hover:text-white ${p.video ? 'border-2 border-white' : 'bg-rojo'}`}
+              >
                 Ver capturas
               </a>
             )}
@@ -116,6 +159,8 @@ export default function ProjectPage() {
       </section>
 
       <Gallery p={p} />
+
+      <VideoBand p={p} />
 
       {p.stats.length > 0 && (
         <section className="px-6 pt-12">

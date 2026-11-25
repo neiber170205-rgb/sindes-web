@@ -46,6 +46,9 @@ export type Milestone = { date: string; title: string; description?: string; pen
 export type Fact = { label: string; value: string };
 export type Img = { id: number; url: string; caption: string | null; alt: string | null; sortOrder: number };
 
+export type ProjectVideo = { id: number; url: string; posterUrl: string | null; durationSec: number; width: number; height: number; caption: string | null };
+export type VideoJob = { id: number; status: 'processing' | 'error'; error: string | null; originalName: string | null; percent: number; waiting: number };
+
 export type TeamMember = { id: number; slug: string; fullName: string; kind: 'docente' | 'estudiante'; roleTitle: string; role: string | null; photoUrl: string | null; published: boolean };
 
 export type Project = {
@@ -73,6 +76,9 @@ export type Project = {
   documents: string[];
   extraTitle: string | null;
   extraBody: string | null;
+  video: ProjectVideo | null;
+  /** Solo en el panel: un video nuevo que se está procesando o falló */
+  videoJob?: VideoJob | null;
   images: Img[];
   technologies: Tech[];
   team: TeamMember[];

@@ -56,3 +56,18 @@ export function groupBy<T>(items: T[], key: (t: T) => string) {
 }
 
 export const BRAND = { azul: '#3F95CB', marino: '#1B4B9B', rojo: '#E1251B', negro: '#000000' } as const;
+
+/** 312 → "5:12" */
+export function formatDuration(sec: number) {
+  const s = Math.max(0, Math.round(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`;
+}
+
+export function formatBytes(n: number) {
+  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1).replace('.', ',')} GB`;
+  if (n >= 1024 ** 2) return `${Math.round(n / 1024 ** 2)} MB`;
+  return `${Math.max(1, Math.round(n / 1024))} KB`;
+}

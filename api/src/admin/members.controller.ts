@@ -18,7 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { AuthGuard } from '../auth/auth.guard';
+import { AdminOnly, AuthGuard } from '../auth/auth.guard';
 import { uniqueMemberSlug } from '../common/member-slug';
 import { MAX_UPLOAD_BYTES, UploadsService } from '../common/uploads.service';
 import { newToken, optionalUrl, siteUrl } from '../common/util';
@@ -229,6 +229,7 @@ export class MembersController {
     });
   }
 
+  @AdminOnly()
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id', ParseIntPipe) id: number) {

@@ -15,6 +15,13 @@
       "when": 1795103846255,
       "tag": "0001_session_version",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795615384291,
+      "tag": "0002_access_links",
+      "breakpoints": true
     }
   ]
 }

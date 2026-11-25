@@ -1,13 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useOutletContext } from 'react-router';
 import { toast } from 'sonner';
 import { TechLogo } from '@/components/site/bits';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, errorText } from '@/lib/api';
-import type { Tech } from '@/lib/types';
+import type { SessionUser, Tech } from '@/lib/types';
 import { groupBy } from '@/lib/utils';
 import { useTechnologies } from './shared';
 import { Confirm, PageHeader, Panel, Spinner } from './ui';
@@ -50,6 +51,7 @@ function LogoButton({ tech, onSaved }: { tech: Tech; onSaved: (list: Tech[]) => 
 }
 
 export default function Technologies() {
+  const me = useOutletContext<SessionUser>();
   const qc = useQueryClient();
   const { data, isLoading } = useTechnologies();
   const [name, setName] = useState('');
@@ -129,6 +131,7 @@ export default function Technologies() {
                 <TechLogo tech={t} size={26} />
                 <span className="flex-1 truncate font-semibold">{t.name}</span>
                 <LogoButton tech={t} onSaved={put} />
+                {me.role === 'admin' && (
                 <Confirm
                   title={`¿Quitar ${t.name}?`}
                   description="Desaparece de los perfiles y proyectos que la usan."
@@ -146,6 +149,7 @@ export default function Technologies() {
                     </Button>
                   }
                 />
+                )}
               </li>
             ))}
           </ul>

@@ -61,8 +61,12 @@ sindes-web/
 - **Invitar a alguien en particular**: pega los nombres (uno por línea) → copia cada link o el mensaje para WhatsApp.
 - **Revisar**: en *Integrantes → Por revisar* abre cada perfil, corrige si hace falta y dale *Publicar*.
 - **Link perdido o vencido**: en el perfil, *Link nuevo* (el anterior deja de servir).
-- **Docente directora**: en su perfil, activa *Destacar arriba*.
-- **Cuenta para la profe**: *Mi cuenta → Nueva cuenta*.
+- **Docentes**: en el perfil, tipo *Docente*. Si hay más de uno, rotan en el bloque negro de *Integrantes*.
+- **Directora**: en su perfil, activa *Directora del semillero* (sale primero, con etiqueta roja).
+- **Dar acceso al panel** (docentes o estudiantes): *Cuentas y acceso → Dar acceso a alguien* → mándale el link; ahí elige su contraseña.
+  - *Edición*: maneja integrantes, proyectos, textos y fotos; no elimina ni crea cuentas.
+  - *Administración*: todo.
+- **Olvidó la contraseña**: *Cuentas y acceso → Link de acceso* (vale 7 días, un solo uso).
 
 ## Copias de seguridad
 
@@ -87,9 +91,10 @@ cd /opt/sindes-web && git pull && docker compose up -d --build
 
 ```bash
 docker compose logs -f api                                         # ver errores de la API
-docker compose exec api node dist/db/admin-cli.js lista            # cuentas del panel
-docker compose exec api node dist/db/admin-cli.js clave correo@fesc.edu.co   # nueva clave si se olvidó
-docker compose exec api node dist/db/admin-cli.js crear correo@fesc.edu.co "Nombre" editor
+docker compose exec api node dist/db/admin-cli.js lista                       # cuentas del panel
+docker compose exec api node dist/db/admin-cli.js crear correo@fesc.edu.co "Nombre" editor   # cuenta + link de acceso
+docker compose exec api node dist/db/admin-cli.js acceso correo@fesc.edu.co   # link nuevo si olvidó la clave
+docker compose exec api node dist/db/admin-cli.js clave correo@fesc.edu.co    # clave aleatoria (último recurso)
 ```
 
 ## Desarrollo local

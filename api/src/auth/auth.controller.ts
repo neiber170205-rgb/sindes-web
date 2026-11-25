@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Req, Res, SetMetadata, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Req, Res, SetMetadata, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
@@ -12,11 +12,12 @@ const passwordSchema = z.object({
   next: z.string().min(10, 'La nueva contraseña debe tener al menos 10 caracteres'),
 });
 const userSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(2),
-  password: z.string().min(10, 'La contraseña debe tener al menos 10 caracteres'),
+  email: z.string().trim().email('Escribe un correo válido'),
+  name: z.string().trim().min(2, 'Escribe el nombre').max(80),
   role: z.enum(['admin', 'editor']),
 });
+const roleSchema = z.object({ role: z.enum(['admin', 'editor']) });
+const accessSchema = z.object({ password: z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(200) });
 
 const cookieOptions = () => ({
   httpOnly: true,
@@ -76,6 +77,39 @@ export class AuthController {
   @SetMetadata(ADMIN_ONLY, true)
   createUser(@Body(new ZodPipe(userSchema)) body: z.infer<typeof userSchema>) {
     return this.auth.createUser(body);
+  }
+
+  /** Link para que la persona cree o cambie su contraseña (también si la olvidó). */
+  @Post('users/:id/access')
+  @UseGuards(AuthGuard)
+  @SetMetadata(ADMIN_ONLY, true)
+  access(@Param('id', ParseIntPipe) id: number) {
+    return this.auth.accessLink(id);
+  }
+
+  @Patch('users/:id')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  @SetMetadata(ADMIN_ONLY, true)
+  async role(@Param('id', ParseIntPipe) id: number, @Body(new ZodPipe(roleSchema)) body: z.infer<typeof roleSchema>, @Req() req: Request & { user: SessionUser }) {
+    await this.auth.updateRole(id, body.role, req.user.id);
+  }
+
+  // ---- Links de acceso (sin sesión) ----
+
+  @Get('access/:token')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  accessInfo(@Param('token') token: string) {
+    return this.auth.accessInfo(token);
+  }
+
+  @Post('access/:token')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  async useAccess(@Param('token') token: string, @Body(new ZodPipe(accessSchema)) body: z.infer<typeof accessSchema>, @Res({ passthrough: true }) res: Response) {
+    const { session, token: jwt } = await this.auth.useAccess(token, body.password);
+    res.cookie(SESSION_COOKIE, jwt, cookieOptions());
+    return session;
   }
 
   @Delete('users/:id')

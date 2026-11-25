@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, SetMetadata, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { eq } from 'drizzle-orm';
@@ -38,3 +38,6 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 }
+
+/** Marca un endpoint como exclusivo de las cuentas de administración. */
+export const AdminOnly = () => SetMetadata(ADMIN_ONLY, true);

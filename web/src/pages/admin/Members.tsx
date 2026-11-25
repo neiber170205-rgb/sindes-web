@@ -1,6 +1,6 @@
 import { Eye, EyeOff, MoreHorizontal, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import { Portrait } from '@/components/site/bits';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
-import type { AdminMember, MemberStatus } from '@/lib/types';
+import type { AdminMember, MemberStatus, SessionUser } from '@/lib/types';
 import { InviteButton, useAdminMembers } from './shared';
 import { Confirm, Empty, fmtRelative, PageHeader, Spinner, StatusBadge, useAction } from './ui';
 
@@ -23,6 +23,7 @@ const TABS: [Tab, string][] = [
 
 function RowActions({ m }: { m: AdminMember }) {
   const nav = useNavigate();
+  const me = useOutletContext<SessionUser>();
   const inv = [['admin', 'members'], ['admin', 'summary']];
   const status = useAction((s: MemberStatus) => api.post(`/admin/members/${m.id}/status`, { status: s }), {
     success: (r) => ((r as AdminMember).status === 'published' ? 'Perfil publicado' : 'Perfil oculto'),
@@ -63,6 +64,8 @@ function RowActions({ m }: { m: AdminMember }) {
               </a>
             </DropdownMenuItem>
           )}
+          {me.role === 'admin' && (
+            <>
           <DropdownMenuSeparator />
           <Confirm
             title={`¿Eliminar a ${m.fullName}?`}
@@ -74,6 +77,8 @@ function RowActions({ m }: { m: AdminMember }) {
               </DropdownMenuItem>
             }
           />
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

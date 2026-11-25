@@ -1,14 +1,15 @@
 import { ExternalLink, Images, Pencil, Plus, Trash2, Users } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
-import type { Project } from '@/lib/types';
+import type { Project, SessionUser } from '@/lib/types';
 import { useAdminProjects } from './shared';
 import { Confirm, Empty, PageHeader, Spinner, useAction } from './ui';
 
 function Card({ p }: { p: Project }) {
+  const me = useOutletContext<SessionUser>();
   const inv = [['admin', 'projects']];
   const pub = useAction((published: boolean) => api.patch(`/admin/projects/${p.id}/published`, { published }), {
     success: (r) => ((r as Project).published ? `${p.name} ya se ve en la página` : `${p.name} quedó oculto`),
@@ -54,6 +55,7 @@ function Card({ p }: { p: Project }) {
                 </a>
               </Button>
             )}
+            {me.role === 'admin' && (
             <Confirm
               title={`¿Eliminar ${p.name}?`}
               description="Se borran sus capturas y la relación con el equipo. Los perfiles de las personas no se tocan. No se puede deshacer."
@@ -64,6 +66,7 @@ function Card({ p }: { p: Project }) {
                 </Button>
               }
             />
+            )}
             <Button asChild size="sm">
               <Link to={`/admin/proyectos/${p.id}`}>
                 <Pencil /> Editar

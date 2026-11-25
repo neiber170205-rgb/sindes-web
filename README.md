@@ -115,7 +115,21 @@ cd web && npm install && npm run dev   # http://localhost:5173 (redirige /api y 
 
 - Cambiaste `api/src/db/schema.ts` → `npm run db:generate` crea la migración nueva en `api/drizzle/`.
 
-## Datos personales
+## Rutas del API y quién puede verlas
+
+| Ruta | Quién |
+| --- | --- |
+| `/api/public/*` | Cualquiera: solo perfiles y proyectos **publicados** |
+| `/api/registro/<link>` | Solo quien tiene ese link personal: ve y edita **su** perfil |
+| `/api/admin/*`, `/api/auth/users` | Solo con sesión del panel; sin sesión responde 401 |
+| `/api/auth/access/<link>` | Solo con el link de acceso a una cuenta |
+
+- Abrir una ruta del API en el navegador y ver JSON es normal: es lo que lee la página. Sin el link o la sesión, responde 401 o 404.
+- Un link personal es como una contraseña: quien lo tenga puede editar ese perfil. No se comparte ni sale en capturas.
+- Las respuestas del API no se guardan en caché ni las indexan los buscadores.
+- La base de datos y el API no están expuestos a internet: solo Caddy (80/443).
+
+
 
 - El formulario pide autorización expresa (Ley 1581 de 2012) antes de enviar.
 - Solo se muestra el correo institucional; nunca teléfonos ni correos personales.

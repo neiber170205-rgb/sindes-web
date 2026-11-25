@@ -14,7 +14,8 @@ export class UploadsService {
   readonly root = process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
 
   private async save(kind: UploadKind, ext: string, data: Buffer): Promise<string> {
-    const rel = `${kind}/${Date.now().toString(36)}-${randomBytes(5).toString('hex')}${ext}`;
+    // Nombre imposible de adivinar: las fotos de perfiles sin publicar no se pueden encontrar probando rutas
+    const rel = `${kind}/${randomBytes(16).toString('base64url')}${ext}`;
     const abs = join(this.root, rel);
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, data);

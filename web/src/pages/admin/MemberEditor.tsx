@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Eye, EyeOff, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Download, Eye, EyeOff, Loader2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
@@ -349,7 +349,17 @@ export default function MemberEditor() {
             {isNew ? (
               <p className="text-sm text-gris-2">Guarda el perfil para poder subir la foto.</p>
             ) : (
-              <PhotoPicker variant="outline" label={m?.photoUrl ? 'Cambiar foto' : 'Subir foto'} busy={photo.isPending} onCropped={(b) => photo.mutateAsync(b).then(() => undefined)} />
+              <div className="flex flex-wrap gap-2">
+                <PhotoPicker variant="outline" label={m?.photoUrl ? 'Cambiar foto' : 'Subir foto'} busy={photo.isPending} onCropped={(b) => photo.mutateAsync(b).then(() => undefined)} />
+                {m?.photoUrl && (
+                  <Button asChild variant="ghost">
+                    {/* La API la entrega en JPG con el nombre de la persona */}
+                    <a href={`/api/admin/members/${m.id}/photo?v=${encodeURIComponent(m.photoUrl)}`} download>
+                      <Download /> Descargar
+                    </a>
+                  </Button>
+                )}
+              </div>
             )}
           </Panel>
 

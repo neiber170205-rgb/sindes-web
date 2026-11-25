@@ -1,4 +1,4 @@
-import { Eye, EyeOff, MoreHorizontal, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { Download, Eye, EyeOff, MoreHorizontal, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import { Portrait } from '@/components/site/bits';
@@ -48,6 +48,13 @@ function RowActions({ m }: { m: AdminMember }) {
           <DropdownMenuItem onSelect={() => nav(`/admin/integrantes/${m.id}`)}>
             <Pencil /> Editar
           </DropdownMenuItem>
+          {m.photoUrl && (
+            <DropdownMenuItem asChild>
+              <a href={`/api/admin/members/${m.id}/photo`} download>
+                <Download /> Descargar foto
+              </a>
+            </DropdownMenuItem>
+          )}
           {m.status !== 'published' ? (
             <DropdownMenuItem disabled={!m.photoUrl} onSelect={() => status.mutate('published')}>
               <Eye /> {m.photoUrl ? 'Publicar' : 'Publicar (falta foto)'}
@@ -95,6 +102,7 @@ export default function Members() {
     for (const m of data ?? []) c[m.status] = (c[m.status] ?? 0) + 1;
     return c;
   }, [data]);
+  const withPhoto = (data ?? []).filter((m) => (tab === 'todos' || m.status === tab) && m.photoUrl).length;
   const rows = (data ?? []).filter((m) => (tab === 'todos' || m.status === tab) && (!q.trim() || m.fullName.toLowerCase().includes(q.trim().toLowerCase())));
 
   return (
@@ -126,9 +134,18 @@ export default function Members() {
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative w-full sm:w-64">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gris-2" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre" className="h-10 pl-9" aria-label="Buscar por nombre" />
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          {withPhoto > 0 && (
+            <Button asChild variant="outline" size="sm" className="h-10">
+              <a href={`/api/admin/members/photos.zip${tab === 'todos' ? '' : `?estado=${tab}`}`} download title="Todas las fotos de esta pestaña en un .zip, en JPG">
+                <Download /> Descargar fotos <span className="tabular-nums opacity-70">{withPhoto}</span>
+              </a>
+            </Button>
+          )}
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gris-2" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre" className="h-10 pl-9" aria-label="Buscar por nombre" />
+          </div>
         </div>
       </div>
 

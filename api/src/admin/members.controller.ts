@@ -11,12 +11,19 @@ import {
   Patch,
   Post,
   Put,
+  Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { asc, count, desc, eq, inArray } from 'drizzle-orm';
+import type { Response } from 'express';
+import { zipSync } from 'fflate';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import sharp from 'sharp';
+import { and, asc, count, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { AdminOnly, AuthGuard } from '../auth/auth.guard';
 import { uniqueMemberSlug } from '../common/member-slug';
@@ -84,6 +91,45 @@ export class MembersController {
       hidden: by.hidden ?? 0,
       total: rows.reduce((a, r) => a + Number(r.n), 0),
     };
+  }
+
+  /** Foto de un perfil en JPG (o el WebP original) lista para guardar. */
+  private async jpg(photoPath: string) {
+    return sharp(join(this.uploads.root, photoPath)).jpeg({ quality: 92, mozjpeg: true }).toBuffer();
+  }
+
+  /** Todas las fotos en un .zip, nombradas con el nombre de cada persona. `estado` filtra como las pestañas del panel. */
+  @Get('photos.zip')
+  async photosZip(@Query('estado') estado: string | undefined, @Res() res: Response) {
+    const valid = ['draft', 'pending', 'published', 'hidden'] as const;
+    const status = valid.find((v) => v === estado);
+    const rows = await this.db
+      .select({ slug: members.slug, photoPath: members.photoPath })
+      .from(members)
+      .where(status ? and(isNotNull(members.photoPath), eq(members.status, status)) : isNotNull(members.photoPath))
+      .orderBy(desc(members.featured), asc(members.sortOrder), asc(members.id));
+    const files = rows.filter((r) => r.photoPath && existsSync(join(this.uploads.root, r.photoPath)));
+    if (!files.length) throw new NotFoundException('No hay fotos para descargar en este grupo');
+    const name = { draft: 'sin-enviar', pending: 'por-revisar', published: 'publicados', hidden: 'ocultos' }[status ?? 'published'];
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="fotos-sindes-${status ? name : 'todos'}.zip"`);
+    res.setHeader('Cache-Control', 'no-store');
+    // Las JPG ya vienen comprimidas: se guardan tal cual (level 0)
+    const entries: Record<string, [Uint8Array, { level: 0 }]> = {};
+    for (const r of files) entries[`${r.slug}.jpg`] = [await this.jpg(r.photoPath!), { level: 0 }];
+    res.end(Buffer.from(zipSync(entries)));
+  }
+
+  @Get(':id/photo')
+  async photoFile(@Param('id', ParseIntPipe) id: number, @Query('formato') formato: string | undefined, @Res() res: Response) {
+    const [m] = await this.db.select({ slug: members.slug, photoPath: members.photoPath }).from(members).where(eq(members.id, id));
+    if (!m?.photoPath || !existsSync(join(this.uploads.root, m.photoPath))) throw new NotFoundException('Este perfil no tiene foto');
+    const webp = formato === 'webp';
+    res.setHeader('Content-Type', webp ? 'image/webp' : 'image/jpeg');
+    res.setHeader('Content-Disposition', `attachment; filename="${m.slug}.${webp ? 'webp' : 'jpg'}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    if (webp) return res.sendFile(join(this.uploads.root, m.photoPath));
+    res.end(await this.jpg(m.photoPath));
   }
 
   @Get()

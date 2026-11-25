@@ -66,6 +66,7 @@ sindes-web/
 - **Dar acceso al panel** (docentes o estudiantes): *Cuentas y acceso → Dar acceso a alguien* → mándale el link; ahí elige su contraseña.
   - *Edición*: maneja integrantes, proyectos, textos y fotos; no elimina ni crea cuentas.
   - *Administración*: todo.
+- **Descargar fotos**: *Integrantes → Descargar fotos* baja las de la pestaña abierta en un .zip (JPG, con el nombre de cada persona). Una sola: menú ⋯ del integrante o *Descargar* en su perfil.
 - **Olvidó la contraseña**: *Cuentas y acceso → Link de acceso* (vale 7 días, un solo uso).
 
 ## Copias de seguridad

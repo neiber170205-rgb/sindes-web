@@ -53,19 +53,103 @@ function Links({ m, dark = false }: { m: Member; dark?: boolean }) {
   );
 }
 
-function Featured({ m }: { m: Member }) {
+function DocenteCard({ m, lead }: { m: Member; lead: boolean }) {
+  return (
+    <>
+      <Portrait
+        name={m.fullName}
+        url={m.photoUrl}
+        bg="#1C1C1C"
+        className="shot aspect-[4/5] flex-[0_0_240px] rounded-[20px] max-sm:max-w-[280px] max-sm:flex-[1_1_100%]"
+        position="50% 20%"
+        textClass="text-[90px]"
+      />
+      <div className="sp-info flex min-w-0 flex-[1_1_380px] flex-col gap-3.5">
+        <span className={`self-start rounded-full px-3.5 py-1.5 text-[15px] font-bold text-white ${lead ? 'bg-rojo' : 'bg-marino'}`}>{m.roleTitle} del semillero</span>
+        <h3 className="text-[clamp(30px,3.6vw,50px)] leading-[1.02] font-black tracking-[-0.015em] italic">{m.fullName}</h3>
+        <p className="text-lg font-semibold text-cielo">{programLine(m)}</p>
+        {m.bio && <p className="line-clamp-5 max-w-[38em] text-[17px] leading-[1.6] text-[#D9D9D9]">{m.bio}</p>}
+        <Links m={m} dark />
+      </div>
+    </>
+  );
+}
+
+/** Docentes arriba: una tarjeta fija si hay una sola persona; si hay varias, rotan solas. */
+function Docentes({ list }: { list: Member[] }) {
+  const reduce = useReducedMotion();
+  const [i, setI] = useState(0);
+  const [tick, setTick] = useState(0);
+  const [stopped, setStopped] = useState(false);
+  const [hover, setHover] = useState(false);
+  const n = list.length;
+  const many = n > 1;
+  const running = many && !reduce && !stopped && !hover;
+  useTicker(
+    () => {
+      setI((x) => (x + 1) % n);
+      setTick((t) => t + 1);
+    },
+    7000,
+    running,
+  );
+  const go = (k: number) => {
+    setI(((k % n) + n) % n);
+    setTick((t) => t + 1);
+    setStopped(true);
+  };
+  const cur = list[Math.min(i, n - 1)];
+  if (!cur) return null;
+
   return (
     <div className="rv">
-      <article className="s s-up d2 flex flex-wrap items-center gap-x-10 gap-y-7 rounded-[28px] border-l-[10px] border-rojo bg-black p-[clamp(20px,3vw,34px)] text-white">
-        <Portrait name={m.fullName} url={m.photoUrl} bg="#1C1C1C" className="aspect-[4/5] flex-[0_0_240px] rounded-[20px] max-sm:flex-[1_1_100%] max-sm:max-w-[280px]" position="50% 20%" textClass="text-[90px]" />
-        <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-3.5">
-          <span className="self-start rounded-full bg-rojo px-3.5 py-1.5 text-[15px] font-bold text-white">{m.roleTitle} del semillero</span>
-          <h3 className="text-[clamp(30px,3.6vw,50px)] leading-[1.02] font-black tracking-[-0.015em] italic">{m.fullName}</h3>
-          <p className="text-lg font-semibold text-cielo">{programLine(m)}</p>
-          {m.bio && <p className="max-w-[38em] text-[17px] leading-[1.6] text-[#D9D9D9]">{m.bio}</p>}
-          <Links m={m} dark />
-        </div>
-      </article>
+      <div className="s s-up d2 flex flex-col gap-3.5" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onFocus={() => setHover(true)} onBlur={() => setHover(false)}>
+        <article
+          className="relative flex flex-wrap items-center gap-x-10 gap-y-7 overflow-hidden rounded-[28px] border-l-[10px] border-rojo bg-black p-[clamp(20px,3vw,34px)] text-white lg:min-h-[380px]"
+          {...(many ? { role: 'region', 'aria-roledescription': 'carrusel', 'aria-label': 'Docentes del semillero' } : {})}
+        >
+          <div key={`${cur.id}-${tick}`} className="contents" aria-live={many && stopped ? 'polite' : undefined}>
+            <DocenteCard m={cur} lead={cur.featured || n === 1} />
+          </div>
+          {many && (
+            <span aria-hidden="true" className="absolute right-0 bottom-0 left-0 h-1.5 bg-white/15">
+              {running ? (
+                <span key={`${i}-${tick}`} className="absolute inset-0 origin-left bg-rojo" style={{ animation: 'spbar 7s linear both' }} />
+              ) : (
+                <span className="absolute inset-0 bg-rojo" />
+              )}
+            </span>
+          )}
+        </article>
+        {many && (
+          <div className="flex flex-wrap items-center gap-3">
+            <RoundArrow dir="prev" label="Docente anterior" onClick={() => go(i - 1)} />
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Elegir docente">
+              {list.map((d, k) => {
+                const on = k === i;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => go(k)}
+                    aria-pressed={on}
+                    aria-label={d.fullName}
+                    title={d.fullName}
+                    className="thumb relative size-14 cursor-pointer overflow-hidden rounded-full border-[3px] p-0"
+                    style={{ borderColor: on ? '#E1251B' : 'transparent', opacity: on ? 1 : 0.6, transform: `translateY(${on ? -4 : 0}px)` }}
+                  >
+                    <Portrait name={d.fullName} url={d.photoUrl} bg="#000" className="absolute inset-0" position="50% 20%" textClass="text-base" />
+                  </button>
+                );
+              })}
+            </div>
+            <RoundArrow dir="next" label="Siguiente docente" onClick={() => go(i + 1)} />
+            <span className="ml-auto text-base font-bold">
+              {i + 1} de {n} docentes
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -116,7 +200,16 @@ function Spotlight({ m, color, running, tick }: { m: Member; color: string; runn
 
 export function Members({ members }: { members: Member[] }) {
   const reduce = useReducedMotion();
-  const featured = members.find((m) => m.featured) ?? members.find((m) => m.kind === 'docente');
+  // Docentes arriba: primero la persona destacada (la directora) y luego en el orden del panel.
+  const docentes = useMemo(() => {
+    const d = members.filter((m) => m.kind === 'docente');
+    return [...d.filter((m) => m.featured), ...d.filter((m) => !m.featured)];
+  }, [members]);
+  const shownAbove = useMemo(() => {
+    if (docentes.length) return new Set(docentes.map((m) => m.id));
+    const f = members.find((m) => m.featured);
+    return new Set(f ? [f.id] : []);
+  }, [docentes, members]);
   const colors = useMemo(() => new Map(members.map((m, i) => [m.id, memberColor(m, i)])), [members]);
 
   const chips = useMemo(() => {
@@ -134,9 +227,10 @@ export function Members({ members }: { members: Member[] }) {
   const [tick, setTick] = useState(0);
   const [autoOff, setAutoOff] = useState(false);
   const [hover, setHover] = useState(false);
-  // La persona destacada ya aparece arriba: en «Todos» el carrusel arranca con el resto del equipo.
+  // Quienes ya salen arriba no se repiten en «Todos»: el carrusel arranca con el resto del equipo.
   const inChip = members.filter((m) => chips.find((c) => c.key === chip)?.ids.has(m.id));
-  const list = chip === 'todos' && featured && inChip.length > 1 ? inChip.filter((m) => m.id !== featured.id) : inChip;
+  const rest = inChip.filter((m) => !shownAbove.has(m.id));
+  const list = chip === 'todos' && rest.length ? rest : inChip;
   const n = Math.max(list.length, 1);
   const idx = ti % n;
   const cur = list[idx];
@@ -195,7 +289,7 @@ export function Members({ members }: { members: Member[] }) {
           )}
         </div>
 
-        {featured && <Featured m={featured} />}
+        {docentes.length > 0 ? <Docentes list={docentes} /> : members.some((m) => m.featured) ? <Docentes list={members.filter((m) => m.featured)} /> : null}
 
         {cur && (
           <div className="rv">

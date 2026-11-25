@@ -5,6 +5,7 @@ import { Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } fr
 import { api, ApiError } from '@/lib/api';
 import type { SessionUser } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import Access from './Access';
 import Login from './Login';
 import { Spinner } from './ui';
 
@@ -40,7 +41,7 @@ const NAV = [
   { to: '/admin/contenido', label: 'Textos de la página', icon: PenLine },
   { to: '/admin/galeria', label: 'Fotos del semillero', icon: Images },
   { to: '/admin/tecnologias', label: 'Tecnologías', icon: Shapes },
-  { to: '/admin/cuenta', label: 'Mi cuenta', icon: KeyRound },
+  { to: '/admin/cuenta', label: 'Mi cuenta', adminLabel: 'Cuentas y acceso', icon: KeyRound },
 ];
 
 function Sidebar({ user, onNavigate }: { user: SessionUser; onNavigate?: () => void }) {
@@ -81,7 +82,7 @@ function Sidebar({ user, onNavigate }: { user: SessionUser; onNavigate?: () => v
               <>
                 {isActive && <span aria-hidden="true" className="absolute top-2 bottom-2 -left-4 w-1.5 rounded-r-full bg-rojo" />}
                 <n.icon className="size-[18px] shrink-0" />
-                <span className="flex-1">{n.label}</span>
+                <span className="flex-1">{user.role === 'admin' && 'adminLabel' in n ? n.adminLabel : n.label}</span>
                 {n.badge && !!summary?.pending && (
                   <span className="rounded-full bg-rojo px-2 py-0.5 text-xs font-bold text-white" aria-label={`${summary.pending} por revisar`}>
                     {summary.pending}
@@ -165,6 +166,7 @@ export default function AdminApp() {
   return (
     <Routes>
       <Route path="login" element={<Login />} />
+      <Route path="acceso/:token" element={<Access />} />
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="integrantes" element={<Members />} />

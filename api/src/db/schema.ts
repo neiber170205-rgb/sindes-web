@@ -36,6 +36,10 @@ export const adminUsers = pgTable('admin_users', {
   role: adminRole('role').notNull().default('editor'),
   /** Sube al cambiar la clave: las sesiones abiertas con la versión anterior dejan de servir. */
   sessionVersion: integer('session_version').notNull().default(0),
+  /** Link de acceso (crear o cambiar la clave sin correo): solo se guarda su hash. */
+  accessTokenHash: text('access_token_hash').unique(),
+  accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   ...timestamps,
 });
 

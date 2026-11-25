@@ -17,7 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { and, asc, eq, like } from 'drizzle-orm';
 import { z } from 'zod';
-import { AuthGuard } from '../auth/auth.guard';
+import { AdminOnly, AuthGuard } from '../auth/auth.guard';
 import { MAX_UPLOAD_BYTES, UploadsService } from '../common/uploads.service';
 import { optionalUrl, slugify } from '../common/util';
 import { ViewsService } from '../common/views.service';
@@ -140,6 +140,7 @@ export class ProjectsController {
     return this.one(id);
   }
 
+  @AdminOnly()
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id', ParseIntPipe) id: number) {

@@ -395,10 +395,10 @@ export default function MemberEditor() {
 
           <Panel title="Orden y destacado">
             <label className="flex cursor-pointer items-center justify-between gap-3 text-sm font-semibold">
-              Destacar arriba en Integrantes
+              Directora del semillero
               <Switch checked={form.featured} onCheckedChange={(c) => set({ featured: c })} />
             </label>
-            <p className="-mt-3 text-xs text-gris-2">Solo una persona puede estar destacada (normalmente la docente directora).</p>
+            <p className="-mt-3 text-xs text-gris-2">Sale primero en el bloque de docentes, con la etiqueta roja. Solo puede haber una. Los demás docentes rotan después según su posición.</p>
             <Field label="Posición" htmlFor="order" hint="Número más bajo, aparece antes.">
               <Input id="order" type="number" value={form.sortOrder} onChange={(e) => set({ sortOrder: e.target.value })} className="w-28" />
             </Field>
